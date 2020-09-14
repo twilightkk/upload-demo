@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <input type="file" id="file">
+
+    <script>
+        // 请求封装
+        function request({
+            url,
+            method='POST',
+            data,
+            headers={},
+            requestList
+        }){
+            return new Promise(resolve=>{
+                const xhr = new XMLHttpRequest()
+                xhr.open(method,url)
+                Object.keys(headers).forEach(key=>{
+                    xhr.setRequestHeader(key,header[key])
+                })
+                xhr.send(data)
+                xhr.onload=e=>{
+                    resolve({
+                        data:e.target.response
+                    })
+                }
+            })
+        }
+
+        const mergeRequest = async() =>{
+            await request({
+                url:'http://localhost:3000/merge',
+                headers:{
+                    "content-type":"application/json"
+                }
+            });
+            alert('上传成功')
+        }
+        
+        document.getElementById('file').addEventListener('change',async (event)=>{
+            
+            const file=event.target.files[0];
+            console.log(file);
+            const file_name=file.name.split('.')[0]
+            let cur=0,size=1024*1024
+            const fileChunkList=[]
+            while (cur<file.size) {
+                fileChunkList.push({
+                    file:file.slice(cur,cur+size)
+                });
+                cur+=size;
+            }
+            // console.log(fileChunkList);
+            const requestList=fileChunkList.map(({file},index)=>{
+                const formData=new FormData()
+                formData.append('chunk',file)
+                formData.append('filename',`${file_name}-${index}`)
+                return{
+                    formData
+                }
+            })
+            .map(async ({formData})=>request({
+              url:'http://localhost:3000',
+              data:formData  
+            }))
+
+            await Promise.all(requestList)
+            console.log(requestList);
+            
+            
+        })
+    </script>
+</body>
+</html>
